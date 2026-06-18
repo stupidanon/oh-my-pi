@@ -179,6 +179,52 @@ describe("createAgentSession defaultInactive tool activation", () => {
 		}
 	});
 
+	it("activates the goal tool by default when goal mode is enabled", async () => {
+		const tempDir = makeTempDir();
+
+		const { session } = await createAgentSession({
+			...baseOptions(tempDir),
+		});
+
+		try {
+			expect(session.getActiveToolNames()).toContain("goal");
+			expect(session.systemPrompt.join("\n")).toContain("goal");
+		} finally {
+			await session.dispose();
+		}
+	});
+
+	it("keeps goal active when toolNames is explicit", async () => {
+		const tempDir = makeTempDir();
+
+		const { session } = await createAgentSession({
+			...baseOptions(tempDir),
+			toolNames: ["read"],
+		});
+
+		try {
+			expect(session.getActiveToolNames()).toEqual(expect.arrayContaining(["read", "goal"]));
+		} finally {
+			await session.dispose();
+		}
+	});
+
+	it("does not register or activate goal when goal mode is disabled", async () => {
+		const tempDir = makeTempDir();
+
+		const { session } = await createAgentSession({
+			...baseOptions(tempDir),
+			settings: Settings.isolated({ "goal.enabled": false }),
+		});
+
+		try {
+			expect(session.getActiveToolNames()).not.toContain("goal");
+			expect(session.getToolByName("goal")).toBeUndefined();
+		} finally {
+			await session.dispose();
+		}
+	});
+
 	it("keeps the hidden resolve tool registered for plan mode even when no deferrable tool is requested", async () => {
 		// Regression for #1428: plan mode submits its finalized plan via
 		// `resolve { action: "apply" }` dispatched through a standing handler

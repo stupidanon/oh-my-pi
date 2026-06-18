@@ -2139,10 +2139,10 @@ export class InteractiveMode implements InteractiveModeContext {
 			});
 			this.goalModeEnabled = restored?.enabled === true;
 			this.goalModePaused = restored?.enabled !== true && restored?.goal.status === "paused";
-			// sdk.ts excludes "goal" from the initial active tool set unconditionally.
-			// Re-add it now so the agent can call resume, complete, or drop on this goal.
+			// Goal is now session-level; keep it in the saved set so pause/complete
+			// restores exactly what the session already exposed.
 			if (restored?.goal) {
-				const previousTools = this.session.getActiveToolNames().filter(name => name !== "goal");
+				const previousTools = this.session.getActiveToolNames();
 				this.#goalModePreviousTools = previousTools;
 				await this.session.setActiveToolsByName([...new Set([...previousTools, "goal"])]);
 			}
@@ -2191,11 +2191,12 @@ export class InteractiveMode implements InteractiveModeContext {
 		// tool named `write` must stay inactive because plan mode's read-only
 		// guarantee relies on the built-in write/edit guard. `resolve` is hidden
 		// too; the standing handler below consumes plan-approval calls through it.
+		const planBaseTools = previousTools.filter(name => name !== "goal");
 		const planAugmentations = ["resolve"];
 		if (this.session.hasBuiltInTool("write")) {
 			planAugmentations.push("write");
 		}
-		const uniquePlanTools = [...new Set([...previousTools, ...planAugmentations])];
+		const uniquePlanTools = [...new Set([...planBaseTools, ...planAugmentations])];
 
 		this.#planModePreviousTools = previousTools;
 		this.planModePlanFilePath = planFilePath;
@@ -2343,7 +2344,7 @@ export class InteractiveMode implements InteractiveModeContext {
 			this.showWarning("Exit plan mode first.");
 			return;
 		}
-		const previousTools = this.session.getActiveToolNames().filter(name => name !== "goal");
+		const previousTools = this.session.getActiveToolNames();
 		const goalTools = [...new Set([...previousTools, "goal"])];
 		this.#goalModePreviousTools = previousTools;
 		this.goalModePaused = false;

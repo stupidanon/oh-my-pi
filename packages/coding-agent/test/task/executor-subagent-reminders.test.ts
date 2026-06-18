@@ -36,6 +36,10 @@ function createAssistantStopMessage(text: string): AssistantMessage {
 	};
 }
 
+type MockGoalRuntime = {
+	buildContinuationPrompt: () => string | undefined;
+};
+
 function createMockSession(
 	onPrompt: (params: {
 		text: string;
@@ -44,6 +48,7 @@ function createMockSession(
 		emit: (event: AgentSessionEvent) => void;
 		state: { messages: AssistantMessage[] };
 	}) => void | Promise<void>,
+	overrides: { settings?: Settings; goalRuntime?: MockGoalRuntime } = {},
 ): AgentSession {
 	const listeners: Array<(event: AgentSessionEvent) => void> = [];
 	const state = { messages: [] as AssistantMessage[] };
@@ -61,6 +66,8 @@ function createMockSession(
 		sessionManager: {
 			appendSessionInit: () => {},
 		},
+		settings: overrides.settings ?? Settings.isolated(),
+		goalRuntime: overrides.goalRuntime ?? { buildContinuationPrompt: () => undefined },
 		getActiveToolNames: () => ["read", "yield"],
 		setActiveToolsByName: async (_toolNames: string[]) => {},
 		subscribe: (listener: (event: AgentSessionEvent) => void) => {
@@ -486,6 +493,51 @@ describe("runSubprocess yield reminders", () => {
 		expect(result.aborted).toBe(false);
 		expect(result.stderr).toBe(SUBAGENT_WARNING_MISSING_YIELD);
 		expect(result.abortReason).toBeUndefined();
+	});
+
+	it("continues active subagent goals with goal continuation prompts instead of yield reminders", async () => {
+		const prompts: string[] = [];
+		const yieldPromptIndexes: number[] = [];
+		const session = createMockSession(
+			({ text, promptIndex, emit, state }) => {
+				prompts.push(text);
+				if (promptIndex <= 4) {
+					const assistant = createAssistantStopMessage(
+						promptIndex === 1 ? "started goal work" : "continued goal work",
+					);
+					state.messages.push(assistant);
+					emit({ type: "message_end", message: assistant });
+					return;
+				}
+				yieldPromptIndexes.push(promptIndex);
+				emit({
+					type: "tool_execution_end",
+					toolCallId: "tool-goal-continuation-yield",
+					toolName: "yield",
+					result: {
+						content: [{ type: "text", text: "Result submitted." }],
+						details: { status: "success", data: { ok: true } },
+					},
+					isError: false,
+				});
+			},
+			{
+				settings: Settings.isolated({ "goal.continuationModes": ["interactive", "subagent"] }),
+				goalRuntime: { buildContinuationPrompt: () => "Goal continuation prompt" },
+			},
+		);
+
+		mockCreateAgentSession(session);
+
+		const result = await runSubprocess({ ...baseOptions, id: "subagent-goal-continuation" });
+
+		expect(prompts[0]).toBe("do work");
+		expect(prompts.slice(1).length).toBeGreaterThanOrEqual(3);
+		expect(prompts.slice(1).every(text => text === "Goal continuation prompt")).toBe(true);
+		expect(prompts.some(text => text.includes("Every turn MUST end with a tool call"))).toBe(false);
+		expect(yieldPromptIndexes).toEqual([5]);
+		expect(result.exitCode).toBe(0);
+		expect(result.output).toContain('"ok": true');
 	});
 
 	it("surfaces abort reason when yield reports aborted status", async () => {

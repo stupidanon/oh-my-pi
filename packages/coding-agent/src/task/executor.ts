@@ -1569,6 +1569,11 @@ async function driveSessionToYield(
 		}
 	};
 
+	const buildGoalContinuation = () =>
+		session.settings.get("goal.continuationModes").includes("subagent")
+			? session.goalRuntime.buildContinuationPrompt()
+			: undefined;
+
 	try {
 		await awaitAbortable(session.prompt(task, { attribution: "agent" }));
 		await awaitAbortable(session.waitForIdle());
@@ -1576,7 +1581,7 @@ async function driveSessionToYield(
 		const reminderToolChoice = buildNamedToolChoice("yield", session.model);
 
 		let retryCount = 0;
-		while (!monitor.yieldCalled() && retryCount < MAX_YIELD_RETRIES && !abortSignal.aborted) {
+		while (!monitor.yieldCalled() && !abortSignal.aborted) {
 			// Skip reminders when the model returned a terminal error (e.g.
 			// rate-limit cap hit, auth failure). Re-prompting would just
 			// hit the same wall, multiplying the failure noise without
@@ -1584,6 +1589,19 @@ async function driveSessionToYield(
 			const lastBeforeReminder = session.getLastAssistantMessage();
 			if (lastBeforeReminder?.stopReason === "error") break;
 			try {
+				const goalContinuation = buildGoalContinuation();
+				if (goalContinuation) {
+					await awaitAbortable(
+						session.prompt(goalContinuation, {
+							attribution: "agent",
+							synthetic: true,
+						}),
+					);
+					await awaitAbortable(session.waitForIdle());
+					continue;
+				}
+
+				if (retryCount >= MAX_YIELD_RETRIES) break;
 				retryCount++;
 				const reminder = prompt.render(submitReminderTemplate, {
 					retryCount,
