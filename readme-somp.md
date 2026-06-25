@@ -77,23 +77,46 @@ bun run build:native
 bun --cwd=packages/coding-agent run build
 ```
 
-## Pulling Upstream Updates
+## Updating Clean Main
 
-From the `somp` branch:
+Only do this when `main` has no custom work:
+
+```sh
+cd ~/sandbox/somp
+git switch main
+git fetch upstream
+git merge --ff-only upstream/main
+git push origin main
+git switch somp
+```
+
+The important part: keep `main` boring and keep experiments on `somp`.
+
+## Updating SOMP From Main
+
+Do this after `main` has been updated.
+
+This keeps `somp` as Samson's custom branch, but moves its base forward:
+
+```text
+before: old main -> SOMP commits
+after:  new main -> SOMP commits
+```
+
+Use rebase rather than squash. Squashing upstream into `somp` loses Git ancestry
+and makes the next update harder. Rebase keeps the mental model simple:
+
+```text
+SOMP = latest upstream OMP + Samson's patch stack
+```
+
+Before rebasing, make a local backup pointer:
 
 ```sh
 cd ~/sandbox/somp
 git switch somp
-git fetch upstream
-git rebase upstream/main
-bun install
-bun --cwd=packages/coding-agent run build
-```
-
-Use rebase rather than merge for this fork. The mental model stays simple:
-
-```text
-SOMP = latest upstream OMP + Samson's patch stack
+git branch somp-before-main-rebase-$(date +%Y-%m-%d) somp
+git rebase main
 ```
 
 If rebase reports conflicts, resolve the files, then:
@@ -107,6 +130,23 @@ If the update is not worth dealing with yet:
 
 ```sh
 git rebase --abort
+```
+
+After a successful rebase:
+
+```sh
+bun install
+bun --cwd=packages/coding-agent run build
+```
+
+If Rust/native code changed during the upstream update, or if this was a large
+upstream bump, do the full SOMP build:
+
+```sh
+bun install
+bun run build:native
+bun --cwd=packages/coding-agent run build
+packages/coding-agent/dist/omp --version
 ```
 
 ## Keeping The Fork Backed Up
@@ -123,17 +163,9 @@ If the first push says the branch has no upstream:
 git push -u origin somp
 ```
 
-## Updating Clean Main
-
-Only do this when `main` has no custom work:
+After a rebase, `somp` has new commit IDs. If the branch already exists on
+GitHub, push it with:
 
 ```sh
-cd ~/sandbox/somp
-git switch main
-git fetch upstream
-git merge --ff-only upstream/main
-git push origin main
-git switch somp
+git push --force-with-lease origin somp
 ```
-
-The important part: keep `main` boring and keep experiments on `somp`.
