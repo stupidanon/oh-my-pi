@@ -178,6 +178,9 @@
 - Fixed an issue where local llama.cpp vision models remained text-only after a model refresh, ensuring they are correctly recognized as image-capable when configured as the default or vision role.
 - Fixed `omp commit` split plans aborting when lock files (such as `bun.lockb`) were staged alongside their manifests by correctly pairing lock files with their corresponding commit groups and properly handling binary files during split execution.
 - Fixed skill loading to ensure that disabling a higher-priority provider does not drop same-named skills from enabled lower-priority providers.
+### Changed
+
+- Hid the always-visible active-subagent HUD by default behind `display.showSubagentHud`, leaving the status-line count badge and Agent Hub access unchanged.
 
 ## [16.3.8] - 2026-07-05
 

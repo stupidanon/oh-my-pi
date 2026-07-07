@@ -568,6 +568,7 @@ tui:
 | `symbolPreset` | enum | `unicode` | `unicode`, `nerd`, `ascii`. |
 | `colorBlindMode` | boolean | `false` | Use blue instead of green for diff additions. |
 | `showHardwareCursor` | boolean | `true` | Show the terminal hardware cursor. |
+| `display.showSubagentHud` | boolean | `false` | Show the always-visible active-subagent list above the editor; the status-line count badge and Agent Hub remain available when off. |
 | `statusLine.preset` | enum | `default` | `default`, `minimal`, `compact`, `full`, `nerd`, `ascii`, `custom`. |
 | `statusLine.separator` | enum | `powerline-thin` | `powerline`, `powerline-thin`, `slash`, `pipe`, `block`, `none`, `ascii`. |
 | `statusLine.sessionAccent` | boolean | `true` | Tint the editor border with the session color. |

@@ -1905,6 +1905,7 @@ export class InteractiveMode implements InteractiveModeContext {
 	 */
 	#renderSubagentList(): void {
 		this.subagentContainer.clear();
+		if (!settings.get("display.showSubagentHud")) return;
 		const lines = renderSubagentHudLines(this.#observerRegistry.getSessions(), this.ui.terminal.columns);
 		if (lines.length === 0) return;
 		this.subagentContainer.addChild(new Text(lines.join("\n"), 1, 0));

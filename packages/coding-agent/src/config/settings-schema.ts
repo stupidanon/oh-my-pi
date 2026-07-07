@@ -896,6 +896,18 @@ export const SETTINGS_SCHEMA = {
 		},
 	},
 
+	"display.showSubagentHud": {
+		type: "boolean",
+		default: false,
+		ui: {
+			tab: "appearance",
+			group: "Display",
+			label: "Show Subagent HUD",
+			description:
+				"Show the always-visible active-subagent list above the editor. The status-line count badge and Agent Hub stay available when this is off.",
+		},
+	},
+
 	"display.showTokenUsage": {
 		type: "boolean",
 		default: false,
